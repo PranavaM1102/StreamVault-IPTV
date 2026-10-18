@@ -47,7 +47,6 @@ class StartupNavigationResolver @Inject constructor(
     }
 
     private suspend fun resolveFirstFavoriteStartupTarget(): PlayerNavigationRequest? {
-        if (!preferencesRepository.showFavoritesCategory.first()) return null
         val context = resolveLiveStartupContext() ?: return null
         val favorites = when (context) {
             is LiveStartupContext.Provider ->
@@ -55,11 +54,13 @@ class StartupNavigationResolver @Inject constructor(
             is LiveStartupContext.Combined ->
                 favoriteRepository.getFavorites(context.providerIds, ContentType.LIVE).first()
         }.sortedBy { it.position }
-        return resolveStartupChannelTarget(
+        val target = resolveStartupChannelTarget(
             channelIds = favorites.map { it.contentId },
             sourceContext = context,
             virtualCategoryId = VirtualCategoryIds.FAVORITES
         )
+        if (target != null) return target
+        return resolveFallbackStartupTarget(context)
     }
 
     private suspend fun resolveLastWatchedStartupTarget(): PlayerNavigationRequest? {
@@ -70,7 +71,7 @@ class StartupNavigationResolver @Inject constructor(
             is LiveStartupContext.Combined ->
                 playbackHistoryRepository.getRecentlyWatchedByProviders(context.providerIds.toSet(), limit = 24).first()
         }
-        return resolveStartupChannelTarget(
+        val target = resolveStartupChannelTarget(
             channelIds = recentHistory
                 .filter { it.contentType == ContentType.LIVE }
                 .sortedByDescending { it.lastWatchedAt }
@@ -78,6 +79,25 @@ class StartupNavigationResolver @Inject constructor(
             sourceContext = context,
             virtualCategoryId = VirtualCategoryIds.RECENT
         )
+        if (target != null) return target
+        return resolveFallbackStartupTarget(context)
+    }
+
+    private suspend fun resolveFallbackStartupTarget(sourceContext: LiveStartupContext): PlayerNavigationRequest? {
+        for (providerId in sourceContext.providerIds) {
+            val channels = channelRepository.getChannels(providerId).first()
+            val hiddenIds = preferencesRepository.getHiddenChannelIds(providerId).first()
+            val firstChannel = channels.firstOrNull { it.id !in hiddenIds && it.streamUrl.isNotBlank() }
+            if (firstChannel != null) {
+                return firstChannel.toLivePlayerRequest(
+                    categoryId = firstChannel.categoryId,
+                    providerId = firstChannel.providerId,
+                    isVirtual = false,
+                    returnDestination = AppDestination.LiveTv()
+                )
+            }
+        }
+        return null
     }
 
     private suspend fun resolveStartupChannelTarget(

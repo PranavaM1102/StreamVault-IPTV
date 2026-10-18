@@ -159,7 +159,7 @@ class AppNavigationCoordinator @Inject constructor(
         val target = state.value.startupTarget ?: return
         startupNavigationRequested = true
         startupResolutionKey = resolvedStartupKey
-        startupPlayerRequest = target.playerRequest
+        startupPlayerRequest = target.playerRequest ?: startupPlayerRequest
         startupLiveDestinationResumed = false
         startupNavigationCommandId = enqueue(
             NavigationCommand.Navigate(

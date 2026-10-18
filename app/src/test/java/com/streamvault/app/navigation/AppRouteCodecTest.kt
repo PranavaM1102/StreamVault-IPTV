@@ -53,6 +53,12 @@ class AppRouteCodecTest {
     }
 
     @Test
+    fun templateArgumentsDecodeToDefaultDestination() {
+        assertThat(AppRouteCodec.decode("live_tv?categoryId={categoryId}"))
+            .isEqualTo(AppDestination.LiveTv())
+    }
+
+    @Test
     fun malformedArgumentsReturnNullWithoutThrowing() {
         assertThat(AppRouteCodec.decode("live_tv?categoryId=not-a-number")).isNull()
         assertThat(AppRouteCodec.decode("movie_detail/not-a-number?returnRoute=home")).isNull()

@@ -88,10 +88,10 @@ internal object AppRouteCodec {
             path == AppRoutePatterns.HOME -> AppDestination.Home
             path == AppRoutePatterns.LIVE_TV -> {
                 when {
-                    !query.containsKey("categoryId") -> AppDestination.LiveTv()
+                    !query.containsKey("categoryId") || query["categoryId"]?.startsWith("{") == true -> AppDestination.LiveTv()
                     else -> query["categoryId"]?.toLongOrNull()?.let { categoryId ->
                         AppDestination.LiveTv(normalizeSentinel(categoryId))
-                    }
+                    } ?: AppDestination.LiveTv()
                 }
             }
             path == AppRoutePatterns.MOVIES -> AppDestination.Movies
